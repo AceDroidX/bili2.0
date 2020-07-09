@@ -54,10 +54,12 @@ send2medal_by_uid = []
 givecoin = 0
 # 数字表示投币最大尝试次数(如果根据up主投币的话，很可能最后发现硬币满了，投不动了，这是就需要限制尝试次数，否则会死循环)
 givecoin_max_try_times = 25
-# av获取(bilitop或者uper)分别代表b站随机或者根据up主mid选取
-fetchrule = "bilitop"
+# av获取(bilitop或者uper或者favlist)分别代表[b站随机]或者[根据up主mid选取]或者[根据收藏夹投币]
+fetchrule = "favlist"
 # up主list([123]或者[123, 234, 123]等)
 mid = [ 207539637,]
+# favlist的id
+favlist = 12345678
 
 # 抽奖@的人，格式为 uid = "用户名"（例如 {332704117 = "白上吹雪Official", 339567211 = "赤井心Official"}）
 # 要求被@的人不能经常改名字，这样也就说明这些用户也可控，即不得随意骚扰他人

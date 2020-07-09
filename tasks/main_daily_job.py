@@ -110,8 +110,12 @@ class BiliMainTask(Sched, DontWait, Unique):
 
     @staticmethod
     async def check(user):
-        aids = await BiliMainTask.fetch_top_videos(user)
-        return (-2, (0, 30), aids),
+        if user.task_ctrl['fetchrule'] == 'bilitop':
+            aids = await BiliMainTask.fetch_top_videos(user)
+            return (-2, (0, 30), aids),
+        elif user.task_ctrl['fetchrule'] == 'favlist':
+            aids = await BiliMainTask.fetch_favlist_videos(user, user.task_ctrl['favlist'])
+            return (-2, (0, 30), aids),
         
     @staticmethod
     async def fetch_bilimain_tasks(user):
@@ -166,7 +170,34 @@ class BiliMainTask(Sched, DontWait, Unique):
                 for video in videos:
                     aids.append(video['aid'])
         return aids
-        
+
+    @staticmethod
+    async def fetch_favlist_videos(user, favlist, page=1):
+        json_rsp = await user.req_s(BiliMainReq.fetch_favlist_videos, user, favlist, page)
+        videos = []
+        for av in json_rsp['data']['medias']:
+            #cid = await BiliMainTask.aid2cid(user, av['id'])
+            cid = None
+            videos.append((av['id'], av['bvid'], cid))
+        if len(videos) == 0:
+            user.warn(f'{favlist}收藏夹获取失败:{json_rsp}')
+            videos = None
+        return videos
+
+    @staticmethod
+    async def get_video_available_coin(user, aid):
+        json_rsp = await user.req_s(BiliMainReq.aid2cid, user, aid)
+        if json_rsp['code'] != 0:
+            user.warn(f'av{aid}视频信息获取失败:{json_rsp}')
+            return 0
+        sent_coin = await user.req_s(BiliMainReq.get_video_sent_coin, user, aid)
+        if json_rsp['data']['copyright'] == 1:
+            return 2-sent_coin
+        elif json_rsp['data']['copyright'] == 2:
+            return 1-sent_coin
+        else:
+            return 0
+
     @staticmethod
     async def aid2cid(user, aid):
         json_rsp = await user.req_s(BiliMainReq.aid2cid, user, aid)
@@ -184,7 +215,14 @@ class BiliMainTask(Sched, DontWait, Unique):
         # 62003 等待发布中
         print(json_rsp)
         return None
-        
+
+    @staticmethod
+    async def cancel_fav(user, aid, favlist):
+        json_rsp = await user.req_s(BiliMainReq.cancel_fav, user, aid, favlist)
+        if json_rsp['code'] != 0:
+            user.warn(f'{favlist}中的av{aid}视频取消收藏失败:{json_rsp}')
+        return json_rsp['code']
+
     @staticmethod
     async def heartbeat(user, bvid, cid):
         print('开始获取视频观看经验')
@@ -198,11 +236,19 @@ class BiliMainTask(Sched, DontWait, Unique):
             if num_coin <= 0:
                 return
             aid = random.choice(videos)[0]
-            result = await BiliMainTask.send_coin2video(user, aid, 1)
+            video_available_coin = await BiliMainTask.get_video_available_coin(user, aid)
+            if video_available_coin == 1 and num_coin % 2 == 1:
+                give_coin = 1
+            elif video_available_coin == 2 and num_coin >= 2:
+                give_coin = 2
+            else:
+                continue
+            result = await BiliMainTask.send_coin2video(user, aid, give_coin)
             if result == -1:
                 return
             elif not result:
-                num_coin -= 1
+                num_coin -= give_coin
+                await BiliMainTask.cancel_fav(user, aid, user.task_ctrl['favlist'])
     
     # 伪造了这个过程，实际没有分享出去
     @staticmethod
@@ -216,6 +262,8 @@ class BiliMainTask(Sched, DontWait, Unique):
     async def work(user, top_videos):
         login, watch_av, num, share_av = await BiliMainTask.fetch_bilimain_tasks(user)
         if user.task_ctrl['fetchrule'] == 'bilitop':
+            videos = top_videos
+        elif user.task_ctrl['fetchrule'] == 'favlist':
             videos = top_videos
         else:
             print('暂不支持 up 主 list，即将跳过本次主站任务')

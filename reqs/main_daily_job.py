@@ -113,6 +113,25 @@ class BiliMainReq:
         json_rsp = await user.other_session.request_json('GET', url, headers=user.pc.headers)
         return json_rsp
 
+    @staticmethod
+    async def fetch_favlist_videos(user, favlist, page=1):
+        url = f'https://api.bilibili.com/x/v3/fav/resource/list?media_id={favlist}&pn={page}&ps=20&keyword=&order=mtime&type=0&tid=0&jsonp=jsonp'
+        json_rsp = await user.other_session.request_json('GET', url, headers=user.pc.headers)
+        return json_rsp
+
+    @staticmethod
+    async def get_video_sent_coin(user, aid):
+        url = f'https://api.bilibili.com/x/web-interface/view?aid={aid}'
+        json_rsp = await user.other_session.request_json('GET', url, headers=user.pc.headers)
+        return json_rsp
+
+    @staticmethod
+    async def cancel_fav(user, aid, favlist):
+        url = 'https://api.bilibili.com/x/v3/fav/resource/deal'
+        data = {'rid': aid, 'type': 2, 'add_media_ids': '',
+                'del_media_ids': favlist, 'jsonp': 'jsonp', 'csrf': user.dict_user['csrf']}
+        json_rsp = await user.other_session.request_json('POST', url, data=data, headers=user.pc.headers)
+        return json_rsp
 
 class DahuiyuanReq:
     # b 币
