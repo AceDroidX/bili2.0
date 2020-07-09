@@ -226,8 +226,10 @@ class BiliMainTask(Sched, DontWait, Unique):
     @staticmethod
     async def cancel_fav(user, aid, favlist):
         json_rsp = await user.req_s(BiliMainReq.cancel_fav, user, aid, favlist)
-        if json_rsp['code'] != 0:
-            user.warn(f'{favlist}中的av{aid}视频取消收藏失败:{json_rsp}')
+        if json_rsp['code'] == 0:
+            user.info(f'{favlist}中的av{aid}取消收藏成功')
+        else:
+            user.warn(f'{favlist}中的av{aid}取消收藏失败:{json_rsp}')
         return json_rsp['code']
 
     @staticmethod
