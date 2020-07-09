@@ -241,21 +241,29 @@ class BiliMainTask(Sched, DontWait, Unique):
     @staticmethod
     async def send_coin(user, num_coin, videos):
         print('开始赠送硬币')
-        for _ in range(user.task_ctrl['givecoin_max_try_times']):
+        for try_times in range(user.task_ctrl['givecoin_max_try_times']):
             if num_coin <= 0:
                 return
             aid = random.choice(videos)[0]
             video_available_coin = await BiliMainTask.get_video_available_coin(user, aid)
-            if video_available_coin == 1 and num_coin % 2 == 1:
+            if video_available_coin == 1 and num_coin % 2 == 1:# 转载视频只投一个
                 give_coin = 1
-            elif video_available_coin == 2 and num_coin >= 2:
+            elif video_available_coin == 2 and num_coin >= 2:# 自创视频只投两个
                 give_coin = 2
+            elif video_available_coin == 2 and num_coin == 1:# 剩余投币量只有一个时，循环不到转载视频，遇到自创视频只投一个且不取消收藏
+                if user.task_ctrl['givecoin_max_try_times']-try_times+1 <= 5:# 循环不到转载视频，只能投自创视频了
+                    give_coin = 1
+                    result = await BiliMainTask.send_coin2video(user, aid, give_coin)
+                    if result == 0:# 投币成功并退出
+                        num_coin -= give_coin
+                        return
+                    continue
             else:
                 continue
             result = await BiliMainTask.send_coin2video(user, aid, give_coin)
             if result == -1:
                 return
-            elif not result:
+            elif not result:# 投币成功并取消收藏
                 num_coin -= give_coin
                 await BiliMainTask.cancel_fav(user, aid, user.task_ctrl['favlist'])
     
