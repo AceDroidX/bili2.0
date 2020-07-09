@@ -121,7 +121,7 @@ class BiliMainReq:
 
     @staticmethod
     async def get_video_sent_coin(user, aid):
-        url = f'https://api.bilibili.com/x/web-interface/view?aid={aid}'
+        url = f'https://api.bilibili.com/x/web-interface/archive/coins?jsonp=jsonp&aid={aid}'
         json_rsp = await user.other_session.request_json('GET', url, headers=user.pc.headers)
         return json_rsp
 

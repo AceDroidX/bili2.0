@@ -174,13 +174,15 @@ class BiliMainTask(Sched, DontWait, Unique):
     @staticmethod
     async def fetch_favlist_videos(user, favlist, page=1):
         json_rsp = await user.req_s(BiliMainReq.fetch_favlist_videos, user, favlist, page)
+        if json_rsp['code']!=0 or json_rsp['data'] is None or json_rsp['data']['medias'] is None:
+            user.warn(f'{favlist}收藏夹获取失败:{json_rsp}')
         videos = []
         for av in json_rsp['data']['medias']:
             #cid = await BiliMainTask.aid2cid(user, av['id'])
             cid = None
             videos.append((av['id'], av['bvid'], cid))
         if len(videos) == 0:
-            user.warn(f'{favlist}收藏夹获取失败:{json_rsp}')
+            user.warn(f'{favlist}收藏夹处理失败:{json_rsp}')
             videos = None
         return videos
 
@@ -190,13 +192,18 @@ class BiliMainTask(Sched, DontWait, Unique):
         if json_rsp['code'] != 0:
             user.warn(f'av{aid}视频信息获取失败:{json_rsp}')
             return 0
-        sent_coin = await user.req_s(BiliMainReq.get_video_sent_coin, user, aid)
-        if json_rsp['data']['copyright'] == 1:
-            return 2-sent_coin
-        elif json_rsp['data']['copyright'] == 2:
-            return 1-sent_coin
-        else:
+        sent_coin_json = await user.req_s(BiliMainReq.get_video_sent_coin, user, aid)
+        try:
+            if json_rsp['data']['copyright'] == 1:
+                return 2-sent_coin_json['data']['multiply']
+            elif json_rsp['data']['copyright'] == 2:
+                return 1-sent_coin_json['data']['multiply']
+            else:
+                return 0
+        except Exception as e:
+            user.warn(f'av{aid}视频已投币数获取失败:{json_rsp}')
             return 0
+        
 
     @staticmethod
     async def aid2cid(user, aid):
