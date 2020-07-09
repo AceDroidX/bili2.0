@@ -258,6 +258,7 @@ class BiliMainTask(Sched, DontWait, Unique):
                         num_coin -= give_coin
                         return
                     continue
+                continue
             else:
                 continue
             result = await BiliMainTask.send_coin2video(user, aid, give_coin)
