@@ -257,7 +257,6 @@ class BiliMainTask(Sched, DontWait, Unique):
                     if result == 0:# 投币成功并退出
                         num_coin -= give_coin
                         return
-                    continue
                 continue
             else:
                 continue
